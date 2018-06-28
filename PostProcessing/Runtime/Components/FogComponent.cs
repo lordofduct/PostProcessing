@@ -19,9 +19,12 @@ namespace UnityEngine.PostProcessing
         {
             get
             {
+                //return model.enabled
+                //       && context.isGBufferAvailable // In forward fog is already done at shader level
+                //       && RenderSettings.fog
+                //       && !context.interrupted;
                 return model.enabled
-                       && context.isGBufferAvailable // In forward fog is already done at shader level
-                       && RenderSettings.fog
+                       && ((RenderSettings.fog && context.isGBufferAvailable) || model.settings.useCustomFogSettings)
                        && !context.interrupted;
             }
         }
@@ -47,23 +50,48 @@ namespace UnityEngine.PostProcessing
 
             var material = context.materialFactory.Get(k_ShaderString);
             material.shaderKeywords = null;
-            var fogColor = GraphicsUtils.isLinearColorSpace ? RenderSettings.fogColor.linear : RenderSettings.fogColor;
-            material.SetColor(Uniforms._FogColor, fogColor);
-            material.SetFloat(Uniforms._Density, RenderSettings.fogDensity);
-            material.SetFloat(Uniforms._Start, RenderSettings.fogStartDistance);
-            material.SetFloat(Uniforms._End, RenderSettings.fogEndDistance);
 
-            switch (RenderSettings.fogMode)
+            if (settings.useCustomFogSettings)
             {
-                case FogMode.Linear:
-                    material.EnableKeyword("FOG_LINEAR");
-                    break;
-                case FogMode.Exponential:
-                    material.EnableKeyword("FOG_EXP");
-                    break;
-                case FogMode.ExponentialSquared:
-                    material.EnableKeyword("FOG_EXP2");
-                    break;
+                var fogColor = GraphicsUtils.isLinearColorSpace ? settings.color.linear : settings.color;
+                material.SetColor(Uniforms._FogColor, fogColor);
+                material.SetFloat(Uniforms._Density, settings.density);
+                material.SetFloat(Uniforms._Start, settings.startDistance);
+                material.SetFloat(Uniforms._End, settings.endDistance);
+
+                switch (settings.mode)
+                {
+                    case FogMode.Linear:
+                        material.EnableKeyword("FOG_LINEAR");
+                        break;
+                    case FogMode.Exponential:
+                        material.EnableKeyword("FOG_EXP");
+                        break;
+                    case FogMode.ExponentialSquared:
+                        material.EnableKeyword("FOG_EXP2");
+                        break;
+                }
+            }
+            else
+            {
+                var fogColor = GraphicsUtils.isLinearColorSpace ? RenderSettings.fogColor.linear : RenderSettings.fogColor;
+                material.SetColor(Uniforms._FogColor, fogColor);
+                material.SetFloat(Uniforms._Density, RenderSettings.fogDensity);
+                material.SetFloat(Uniforms._Start, RenderSettings.fogStartDistance);
+                material.SetFloat(Uniforms._End, RenderSettings.fogEndDistance);
+
+                switch (RenderSettings.fogMode)
+                {
+                    case FogMode.Linear:
+                        material.EnableKeyword("FOG_LINEAR");
+                        break;
+                    case FogMode.Exponential:
+                        material.EnableKeyword("FOG_EXP");
+                        break;
+                    case FogMode.ExponentialSquared:
+                        material.EnableKeyword("FOG_EXP2");
+                        break;
+                }
             }
 
             var fbFormat = context.isHdr
